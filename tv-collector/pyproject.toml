@@ -1,0 +1,41 @@
+[tool.poetry]
+name = "tv-collector"
+version = "0.1.0"
+description = "TradingView screener data collector for Momentum AI"
+authors = ["Momentum AI <dev@momentum-ai.io>"]
+readme = "README.md"
+packages = [{ include = "app" }]
+
+[tool.poetry.dependencies]
+python                = "^3.11"
+apscheduler           = "^3.10"
+python-dotenv         = "^1.0"
+structlog             = "^24.0"
+httpx                 = "^0.27"      # async-capable HTTP client for the Go backend
+pydantic              = "^2.0"       # data validation / models
+tradingview-screener  = "^3.1"       # TradingView screener query builder
+rookiepy              = "^0.5"       # browser cookie extraction
+pandas                = "^2.0"       # returned by tradingview-screener
+fastapi               = "^0.115"     # HTTP server for the /run trigger endpoint
+uvicorn               = {extras = ["standard"], version = "^0.30"}  # ASGI server
+prometheus-client     = "^0.21"      # Prometheus metrics
+prometheus-fastapi-instrumentator = "^6.1"  # FastAPI instrumentation
+
+[tool.poetry.group.dev.dependencies]
+pytest      = "^8.0"
+pytest-httpx = "^0.30"
+ruff        = "^0.4"
+mypy        = "^1.10"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[build-system]
+requires      = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+

@@ -1,0 +1,136 @@
+services:
+
+  # ──────────────────────────────────────────────
+  # PostgreSQL – primary data store
+  # ──────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: lattice_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-momentum}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-momentum}
+      POSTGRES_DB:       ${POSTGRES_DB:-momentum_ai}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-momentum} -d ${POSTGRES_DB:-momentum_ai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────
+  # API – Go HTTP service (health + future REST)
+  # ──────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: deployments/docker/api.Dockerfile
+    container_name: lattice_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-momentum}:${POSTGRES_PASSWORD:-momentum}@postgres:5432/${POSTGRES_DB:-momentum_ai}?sslmode=disable
+      API_KEY: ${API_KEY:-}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data/tradingview_exports:/app/data/tradingview_exports:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 45s   # first boot runs 12 migrations — give them time
+
+
+  # ──────────────────────────────────────────────
+  # Scheduler – nightly Go pipeline
+  # Runs the full nightly pipeline on schedule.
+  # ──────────────────────────────────────────────
+  scheduler:
+    build:
+      context: .
+      dockerfile: deployments/docker/cron.Dockerfile
+    container_name: lattice_scheduler
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-momentum}:${POSTGRES_PASSWORD:-momentum}@postgres:5432/${POSTGRES_DB:-momentum_ai}?sslmode=disable
+
+      # ── Cron schedule ─────────────────────────────────────────────────────
+      # Local dev/testing: every 2 minutes.
+      # Production: set CRON_SCHEDULE=0 21 * * 1-5 in .env
+      #   (21:00 UTC = 17:00 ET, Mon–Fri)
+      CRON_SCHEDULE: ${CRON_SCHEDULE:-*/2 * * * *}
+
+    volumes:
+      - ./data/tradingview_exports:/app/data/tradingview_exports:rw
+
+  # ──────────────────────────────────────────────
+  # Backfill – one-shot historical candle ingest
+  # Run on demand (never starts automatically):
+  #   docker compose --profile backfill run --rm backfill
+  #   docker compose --profile backfill run --rm backfill -ticker AAPL -years 3
+  # ──────────────────────────────────────────────
+  backfill:
+    build:
+      context: .
+      dockerfile: deployments/docker/backfill.Dockerfile
+    container_name: lattice_backfill
+    profiles: ["backfill"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-momentum}:${POSTGRES_PASSWORD:-momentum}@postgres:5432/${POSTGRES_DB:-momentum_ai}?sslmode=disable
+
+  # ──────────────────────────────────────────────
+  # TV Collector – Python FastAPI service
+  # Exposes POST /run; triggered by the Go nightly
+  # pipeline (Step 1) rather than its own cron.
+  # The APScheduler has been removed — the Go
+  # pipeline is the sole orchestrator.
+  # ──────────────────────────────────────────────
+  tv-collector:
+    build:
+      context: ./tv-collector
+      dockerfile: Dockerfile
+    container_name: lattice_tv_collector
+    restart: unless-stopped  # wait until Go API is up and migrations done
+    depends_on:
+      api:
+        condition: service_healthy   # wait until Go API is up and migrations done
+
+    env_file: ./tv-collector/.env
+    environment:
+      # Override with Docker service name so the container reaches the API
+      BACKEND_API_URL: http://api:8080
+      RAW_DATA_DIR: /app/data/raw
+      API_KEY: ${API_KEY:-}
+      # TV_COOKIES_FILE: path to a Netscape cookies.txt exported from Chrome/Firefox
+      TV_COOKIES_FILE: ${TV_COOKIES_FILE:-/run/secrets/tradingview_cookies.txt}
+    ports:
+      - "8001:8001"
+    volumes:
+      - tv_raw_data:/app/data/raw
+      - ${TV_COOKIES_PATH:-./secrets/tradingview_cookies.txt}:/run/secrets/tradingview_cookies.txt:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8001/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  tv_raw_data:

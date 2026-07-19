@@ -1,0 +1,14 @@
+.env
+tv-collector/.env
+bin/
+
+# IDE
+.idea/
+.vscode/
+
+.venv/
+
+secrets/
+/data/tradingview_exports
+
+.DS_Store

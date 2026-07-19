@@ -1,0 +1,75 @@
+version: "2"
+
+run:
+  timeout: 5m
+  go: "1.26"                    # ✅ Changed: go → go-version
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - misspell
+    - revive
+    - gocritic
+    - bodyclose
+    - contextcheck
+    - nilerr
+    - nilnil
+    - noctx
+    - prealloc
+    - rowserrcheck
+    - sqlclosecheck
+    - exhaustive
+    - copyloopvar
+    - bidichk
+    - dupword
+    - usestdlibvars
+    - tparallel
+    - durationcheck
+    - errorlint
+  settings:                             # ✅ Changed: nested under linters
+    staticcheck:
+      checks: ["all"]
+    gocritic:
+      enabled-tags:
+        - performance
+        - style
+        - experimental
+    gosec:
+      excludes:
+        - G104
+    revive:
+      severity: warning
+      rules:
+        - name: exported
+          disabled: true
+        - name: var-naming
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: error-return
+        - name: error-strings
+        - name: early-return
+        - name: increment-decrement
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: superfluous-else
+        - name: unreachable-code
+        - name: var-declaration
+       # - name: nested-structs
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+issues:
+  max-issues-per-linter: 0                     # ✅ Changed: max-issues-per-linter → max-per-linter
+  max-same-issues: 0
+  fix: false
