@@ -18,7 +18,7 @@ COPY pyproject.toml poetry.lock* ./
 # pyproject.toml (e.g. fastapi, uvicorn) without changing pinned versions
 # of packages that are already locked.  This is a no-op when the lock file
 # is already up-to-date, so existing builds stay fast.
-RUN poetry lock --no-update && \
+RUN poetry lock && \
     poetry install --only main --no-root && \
     rm -rf "$POETRY_CACHE_DIR"
 

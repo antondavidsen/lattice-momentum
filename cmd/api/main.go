@@ -72,7 +72,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:    ":8080",
-		Handler: api.MetricsMiddleware(api.CORSMiddleware(api.KeyMiddleware(cfg.APIKey)(api.RecoveryMiddleware(mux)))),
+		Handler: api.MetricsMiddleware(api.CORSMiddleware(nil)(api.KeyMiddleware(cfg.APIKey)(api.RecoveryMiddleware(mux)))),
 		// ReadTimeout covers the entire request read (headers + body).
 		// Must be ≥ WriteTimeout or the connection is closed before the handler runs.
 		ReadTimeout: 60 * time.Second,

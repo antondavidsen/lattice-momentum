@@ -4,8 +4,10 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 
 	"ai-stock-service/internal/llm"
 
@@ -134,8 +136,8 @@ func Load() (*Config, error) {
 		LLMModel:                os.Getenv("LLM_MODEL"),
 		LLMMaxTokens:            getEnvInt("LLM_MAX_TOKENS", 8000),
 		LLMTemperature:          getEnvFloat("LLM_TEMPERATURE", 0.2),
-		LLMEvalEnabled:          getEnv("LLM_EVAL_ENABLED", "false") == "true",
-		CommercialReportEnabled: getEnv("COMMERCIAL_REPORT_ENABLED", "false") == "true",
+		LLMEvalEnabled:          parseBoolEnv("LLM_EVAL_ENABLED", getEnv("LLM_EVAL_ENABLED", "false")),
+		CommercialReportEnabled: parseBoolEnv("COMMERCIAL_REPORT_ENABLED", getEnv("COMMERCIAL_REPORT_ENABLED", "false")),
 
 		CommercialLLMProvider: getEnv("COMMERCIAL_LLM_PROVIDER", "openai"),
 		CommercialLLMModel:    os.Getenv("COMMERCIAL_LLM_MODEL"),
@@ -145,25 +147,25 @@ func Load() (*Config, error) {
 		AppEnv:         getEnv("APP_ENV", "development"),
 		APIKey:         os.Getenv("API_KEY"),
 
-		EnrichmentEnabled: getEnv("ENRICHMENT_ENABLED", "false") == "true",
+		EnrichmentEnabled: parseBoolEnv("ENRICHMENT_ENABLED", getEnv("ENRICHMENT_ENABLED", "false")),
 
-		PremarketEnabled:            getEnv("PREMARKET_ENABLED", "false") == "true",
+		PremarketEnabled:            parseBoolEnv("PREMARKET_ENABLED", getEnv("PREMARKET_ENABLED", "false")),
 		PremarketCronSchedule:       getEnv("PREMARKET_CRON_SCHEDULE", "30 11 * * 1-5"),
-		PremarketLLMCatalystEnabled: getEnv("PREMARKET_LLM_CATALYST_ENABLED", "true") == "true",
+		PremarketLLMCatalystEnabled: parseBoolEnv("PREMARKET_LLM_CATALYST_ENABLED", getEnv("PREMARKET_LLM_CATALYST_ENABLED", "true")),
 		FinnhubAPIKey:               os.Getenv("FINNHUB_API_KEY"),
 
-		PromptMemoryEnabled: getEnv("PROMPT_MEMORY_ENABLED", "false") == "true",
+		PromptMemoryEnabled: parseBoolEnv("PROMPT_MEMORY_ENABLED", getEnv("PROMPT_MEMORY_ENABLED", "false")),
 
 		PremonitionBackend: getEnv("PREMONITION_BACKEND", "xgboost"),
 		PremonitionMinAUC:  getEnvFloat("PREMONITION_MIN_AUC", 0.65),
 		PremonitionTmpDir:  getEnv("PREMONITION_TMP_DIR", "/tmp/premonition"),
-		PremonitionEnabled: getEnv("PREMONITION_ENABLED", "false") == "true",
+		PremonitionEnabled: parseBoolEnv("PREMONITION_ENABLED", getEnv("PREMONITION_ENABLED", "false")),
 
 		EmbeddingBackend:     getEnv("EMBEDDING_BACKEND", "noop"),
 		EmbeddingModel:       getEnv("EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
 		EmbeddingEndpointURL: os.Getenv("EMBEDDING_ENDPOINT_URL"),
 
-		RAGEnabled:    getEnv("RAG_ENABLED", "false") == "true",
+		RAGEnabled:    parseBoolEnv("RAG_ENABLED", getEnv("RAG_ENABLED", "false")),
 		RAGTopK:       getEnvInt("RAG_TOP_K", 3),
 		RAGMaxAgeDays: getEnvInt("RAG_MAX_AGE_DAYS", 365),
 	}, nil
@@ -204,6 +206,25 @@ func (c *Config) CommercialLLMConfig() llm.Config {
 		Provider: c.CommercialLLMProvider,
 		APIKey:   apiKey,
 		BaseURL:  c.LLMBaseURL,
+	}
+}
+
+// parseBoolEnv accepts the standard Go strconv.ParseBool spellings
+// ("1", "t", "T", "TRUE", "true", "True", "0", "f", "F", "FALSE", "false", "False")
+// and also the common "yes"/"no", "on"/"off" variants. Whitespace is
+// trimmed before comparison. Returns false on any unrecognized value
+// (matching the previous behavior for backward compatibility) but logs
+// a warning at INFO level so silent-disable becomes visible.
+func parseBoolEnv(key, value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "true", "1", "t", "yes", "y", "on":
+		return true
+	case "false", "0", "f", "no", "n", "off", "":
+		return false
+	default:
+		slog.Warn("config: unrecognized boolean value, treating as false",
+			"env_key", key, "env_value", value)
+		return false
 	}
 }
 

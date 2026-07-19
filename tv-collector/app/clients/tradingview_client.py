@@ -88,7 +88,7 @@ def _load_from_file(path: str) -> http.cookiejar.CookieJar | None:
     if not cookie_path.exists():
         log.warning(
             "tradingview_client.cookies_file_not_found",
-            path=str(cookie_path),
+            path=cookie_path.name,
             hint="set TV_COOKIES_FILE to a valid Netscape cookies.txt path",
         )
         return None
@@ -99,14 +99,14 @@ def _load_from_file(path: str) -> http.cookiejar.CookieJar | None:
         cookie_count = sum(1 for _ in jar)
         log.info(
             "tradingview_client.cookies_loaded_from_file",
-            path=str(cookie_path),
+            path=cookie_path.name,
             cookie_count=cookie_count,
         )
         return jar
     except Exception as exc:
         log.warning(
             "tradingview_client.cookies_file_load_failed",
-            path=str(cookie_path),
+            path=cookie_path.name,
             error=str(exc),
         )
         return None

@@ -88,7 +88,7 @@ class TestWriteAuditNon2xx:
     def test_non_2xx_triggers_fallback(self, make_elimination_record: Any, tmp_path: Path) -> None:
         """A 500 response should fall back to writing a local file."""
         records = [make_elimination_record(ticker="TSLA", date="2026-06-15")]
-        fallback_dir = tmp_path / FALLBACK_DIR
+        fallback_dir = tmp_path / "test_fallback"
 
         with patch("app.screeners.audit_writer.httpx.Client") as mock_client_cls:
             mock_client = MagicMock()
@@ -115,7 +115,7 @@ class TestWriteAuditConnectionError:
     def test_connection_error_triggers_fallback(self, make_elimination_record: Any, tmp_path: Path) -> None:
         """A ConnectError should fall back to writing a local file."""
         records = [make_elimination_record(ticker="GOOGL", date="2026-07-01")]
-        fallback_dir = tmp_path / FALLBACK_DIR
+        fallback_dir = tmp_path / "test_fallback"
 
         with patch("app.screeners.audit_writer.httpx.Client") as mock_client_cls:
             mock_client = MagicMock()
@@ -140,7 +140,7 @@ class TestWriteAuditTimeout:
     def test_timeout_triggers_fallback(self, make_elimination_record: Any, tmp_path: Path) -> None:
         """A TimeoutException should fall back to writing a local file."""
         records = [make_elimination_record(ticker="META", date="2026-07-02")]
-        fallback_dir = tmp_path / FALLBACK_DIR
+        fallback_dir = tmp_path / "test_fallback"
 
         with patch("app.screeners.audit_writer.httpx.Client") as mock_client_cls:
             mock_client = MagicMock()
@@ -168,7 +168,7 @@ class TestFallbackWrite:
             make_elimination_record(ticker="AAPL", rule="climax_top", date="2026-06-01"),
             make_elimination_record(ticker="MSFT", rule="volume_climax", date="2026-06-01"),
         ]
-        fallback_dir = tmp_path / FALLBACK_DIR
+        fallback_dir = tmp_path / "test_fallback"
 
         with patch("app.screeners.audit_writer.httpx.Client") as mock_client_cls:
             mock_client = MagicMock()
@@ -192,7 +192,7 @@ class TestFallbackWrite:
     def test_fallback_appends_to_existing(self, make_elimination_record: Any, tmp_path: Path) -> None:
         """Running fallback twice should append records."""
         records = [make_elimination_record(ticker="AAPL", date="2026-06-01")]
-        fallback_dir = tmp_path / FALLBACK_DIR
+        fallback_dir = tmp_path / "test_fallback"
 
         def _run_fallback() -> None:
             with patch("app.screeners.audit_writer.httpx.Client") as mock_client_cls:

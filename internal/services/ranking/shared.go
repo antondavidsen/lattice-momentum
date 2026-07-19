@@ -1,11 +1,8 @@
 // Package ranking implements the Daily Ranking Engine (multi-list output).
 //
-// Three isolated scoring engines share the same input data but apply different
-// weights and filters to produce independent Top 10 lists:
+// This public subset ships one engine:
 //
-//   - EP List        — earnings / episodic pivot catalyst-driven setups
 //   - Momentum List  — pure technical breakout leaders
-//   - Leaders List   — institutional-quality fundamental compounders
 //
 // Each engine implements the Engine interface so the orchestrating job
 // can treat them uniformly.

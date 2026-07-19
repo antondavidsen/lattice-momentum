@@ -81,13 +81,14 @@ func (c *geminiClient) Generate(ctx context.Context, req *Request) (Response, er
 		return Response{}, fmt.Errorf("gemini: marshal request: %w", err)
 	}
 
-	endpoint := fmt.Sprintf("%s/v1beta/models/%s:generateContent?key=%s", c.baseURL, model, c.apiKey)
+	endpoint := fmt.Sprintf("%s/v1beta/models/%s:generateContent", c.baseURL, model)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(payload))
 	if err != nil {
 		metrics.LLMRequestsTotal.WithLabelValues(c.Name(), model, "error", listType).Inc()
 		return Response{}, fmt.Errorf("gemini: create request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-goog-api-key", c.apiKey)
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
@@ -109,7 +110,7 @@ func (c *geminiClient) Generate(ctx context.Context, req *Request) (Response, er
 			"llm_provider", "gemini",
 		)
 		metrics.LLMRequestsTotal.WithLabelValues(c.Name(), model, "error", listType).Inc()
-		return Response{}, fmt.Errorf("gemini: HTTP %d: %s", resp.StatusCode, string(respBody))
+		return Response{}, fmt.Errorf("gemini: HTTP %d: %s", resp.StatusCode, redactErrorBody(respBody))
 	}
 
 	var genResp geminiGenerateResponse

@@ -445,36 +445,60 @@ func TestExtractTVSnapshots_ExchangeSetWhenNonEmpty(t *testing.T) {
 
 // ── CORSMiddleware ─────────────────────────────────────────────────────────────
 
-func TestCORSMiddleware_SetsHeaders(t *testing.T) {
-	// Validates that CORSMiddleware sets the expected CORS headers on all responses.
+func TestCORSMiddleware_WithAllowedOrigin_SetsHeaders(t *testing.T) {
+	// Validates that CORSMiddleware sets the expected CORS headers when
+	// the request Origin matches the allowed list.
+	allowedOrigins := []string{"https://example.com"}
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("OK"))
 	})
 
-	handler := CORSMiddleware(inner)
+	handler := CORSMiddleware(allowedOrigins)(inner)
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", http.NoBody)
+	req.Header.Set("Origin", "https://example.com")
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, "*", rr.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "https://example.com", rr.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "Origin", rr.Header().Get("Vary"))
 	assert.Equal(t, "GET, POST, OPTIONS", rr.Header().Get("Access-Control-Allow-Methods"))
 	assert.Equal(t, "Content-Type, Authorization, X-API-Key", rr.Header().Get("Access-Control-Allow-Headers"))
 	assert.Equal(t, "86400", rr.Header().Get("Access-Control-Max-Age"))
 }
 
+func TestCORSMiddleware_WithNilOrigins_NoHeaders(t *testing.T) {
+	// When CORSMiddleware is configured with nil (no allowed origins),
+	// no CORS headers should be emitted and the request should pass through.
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("OK"))
+	})
+
+	handler := CORSMiddleware(nil)(inner)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", http.NoBody)
+	req.Header.Set("Origin", "https://evil.com")
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Empty(t, rr.Header().Get("Access-Control-Allow-Origin"))
+}
+
 func TestCORSMiddleware_OPTIONSReturns204(t *testing.T) {
 	// Validates that OPTIONS requests return 204 No Content and do not invoke
-	// the next handler.
+	// the next handler when the origin is allowed.
+	allowedOrigins := []string{"https://example.com"}
 	innerCalled := false
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		innerCalled = true
 		w.WriteHeader(http.StatusOK)
 	})
 
-	handler := CORSMiddleware(inner)
+	handler := CORSMiddleware(allowedOrigins)(inner)
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodOptions, "/test", http.NoBody)
+	req.Header.Set("Origin", "https://example.com")
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 

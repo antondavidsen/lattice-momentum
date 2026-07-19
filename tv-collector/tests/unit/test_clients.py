@@ -374,15 +374,18 @@ class TestLoadFromBrowser:
 
     def test_supported_browser_fails_gracefully(self) -> None:
         """A browser that exists in _BROWSER_LOADERS but has no cookie store returns None."""
-        # Note: rookiepy is globally mocked in conftest.py, so this test
-        # verifies graceful handling (no exception) under mock conditions.
-        if not _BROWSER_LOADERS:
-            pytest.skip("no browser loaders available on this system")
-        browser = list(_BROWSER_LOADERS.keys())[0]
-        result = _load_from_browser(browser)
-        # Should not raise — the result depends on mocking setup
-        assert result is not None
-        assert not isinstance(result, Exception)
+        import http.cookiejar
+        from unittest.mock import MagicMock, patch
+
+        # Real-rookiepy is now env-dependent in CI; patch the symbol the
+        # production code sees so the test is deterministic.
+        failing_loader = MagicMock(side_effect=Exception("simulated browser failure"))
+        with patch("app.clients.tradingview_client._BROWSER_LOADERS", {"chrome": failing_loader}):
+            with patch("app.clients.tradingview_client.rookiepy") as mock_rookiepy:
+                mock_rookiepy.to_cookiejar.return_value = http.cookiejar.CookieJar()
+                result = _load_from_browser("chrome")
+
+        assert result is None  # graceful fail under loader exception
 
     def test_known_browsers_list_not_empty(self) -> None:
         assert len(_KNOWN_BROWSERS) >= 5

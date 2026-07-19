@@ -42,7 +42,7 @@ var (
 	}, []string{"job", "step"})
 
 	NightlyPipelineStepTotal = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "nighFixtly_pipeline_step_total",
+		Name: "nightly_pipeline_step_total",
 		Help: "Nightly pipeline step executions by step name and status (success|failure).",
 	}, []string{"step", "status"})
 

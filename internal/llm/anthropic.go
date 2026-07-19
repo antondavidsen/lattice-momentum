@@ -163,7 +163,7 @@ func (c *anthropicClient) handleSyncResponse(resp *http.Response) (Response, err
 			"status_code", resp.StatusCode,
 			"llm_provider", "anthropic",
 		)
-		return Response{}, fmt.Errorf("anthropic: HTTP %d: %s", resp.StatusCode, string(respBody))
+		return Response{}, fmt.Errorf("anthropic: HTTP %d: %s", resp.StatusCode, redactErrorBody(respBody))
 	}
 
 	var msgResp anthropicMessagesResponse
@@ -185,7 +185,7 @@ func (c *anthropicClient) handleStreamResponse(resp *http.Response) (Response, e
 			"status_code", resp.StatusCode,
 			"llm_provider", "anthropic",
 		)
-		return Response{}, fmt.Errorf("anthropic: HTTP %d: %s", resp.StatusCode, string(body))
+		return Response{}, fmt.Errorf("anthropic: HTTP %d: %s", resp.StatusCode, redactErrorBody(body))
 	}
 
 	var (

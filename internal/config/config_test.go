@@ -466,11 +466,16 @@ func TestLoad_BooleanVariations(t *testing.T) {
 		want     bool
 	}{
 		{"true lowercase", "true", true},
-		{"TRUE uppercase", "TRUE", false},
-		{"1", "1", false},
+		{"TRUE uppercase", "TRUE", true},
+		{"True mixedcase", "True", true},
+		{"1", "1", true},
+		{"t", "t", true},
+		{"yes", "yes", true},
+		{"on", "on", true},
 		{"empty", "", false},
 		{"false", "false", false},
-		{"whitespace", "  true  ", false},
+		{"whitespace", "  true  ", true},
+		{"unrecognized", "maybe", false},
 	}
 
 	for _, tt := range tests {

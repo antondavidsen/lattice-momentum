@@ -22,6 +22,7 @@ from pathlib import Path
 # ── 1. Load cookies ───────────────────────────────────────────────────────────
 
 cookies_file = os.getenv("TV_COOKIES_FILE", "").strip()
+cookies_file_explicit = bool(cookies_file)
 tv_browser   = os.getenv("TV_BROWSER", "chromium").lower()
 
 jar: http.cookiejar.CookieJar | None = None
@@ -34,12 +35,19 @@ if cookies_file:
             file_jar = http.cookiejar.MozillaCookieJar(str(p))
             file_jar.load(ignore_discard=True, ignore_expires=True)
             jar = file_jar
-            print(f"[cookies] Loaded from file: {p}")
+            print(f"[cookies] Loaded from file: {p.name}")
             print(f"[cookies] Total cookies in file: {sum(1 for _ in jar)}")
         except Exception as e:
             print(f"[cookies] Failed to load file: {e}")
+            if cookies_file_explicit:
+                print("[cookies] TV_COOKIES_FILE was explicitly set but the file could not be loaded")
+                print("[cookies] Refusing to fall back to browser cookies — fix the file or unset TV_COOKIES_FILE")
+                sys.exit(1)
     else:
-        print(f"[cookies] File not found: {p}")
+        print(f"[cookies] File not found: {p.name}")
+        if cookies_file_explicit:
+            print("[cookies] TV_COOKIES_FILE was explicitly set but the file does not exist")
+            sys.exit(1)
 else:
     print("[cookies] TV_COOKIES_FILE not set")
 

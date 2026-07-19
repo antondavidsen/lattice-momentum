@@ -13,22 +13,40 @@ Provides:
 from __future__ import annotations
 
 import sys
-import json
 from pathlib import Path
 from typing import Any, Callable
 from unittest.mock import MagicMock
-
-# ── Mock rookiepy before any app import ───────────────────────────────────────
-# rookiepy fails to build on this system (native extension).
-# All app modules that import TradingViewClient depend on it indirectly.
-_rookiepy = MagicMock()
-_rookiepy.__version__ = "0.0.0"
-sys.modules["rookiepy"] = _rookiepy
 
 import pandas as pd
 import pytest
 
 from app.screeners.stage1_filter import EliminationRecord
+
+
+# ── Autouse: mock rookiepy only when not importable ────────────────────────────
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _mock_rookiepy_if_unavailable():
+    """Mock rookiepy when not importable, but use the real package when it is.
+
+    CI's `poetry install` provides the real rookiepy binary; local dev on
+    platforms where the native extension fails to build still sees green
+    tests via this substitution. Tests that need a specific rookiepy
+    behaviour should override this fixture at function scope.
+    """
+    import importlib
+    try:
+        importlib.import_module("rookiepy")
+    except ImportError:
+        mock = MagicMock()
+        mock.__version__ = "0.0.0"
+        sys.modules["rookiepy"] = mock
+        yield
+        sys.modules.pop("rookiepy", None)
+    else:
+        # Real rookiepy is available — leave it alone.
+        yield
 
 
 # ── Fixture: make_ticker (factory) ─────────────────────────────────────────────

@@ -16,9 +16,12 @@ import (
 // text and token counts from the Gemini REST API.
 func TestGeminiGenerate_Success(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Validate query param contains API key
-		if !strings.Contains(r.URL.String(), "key=test-key") {
-			t.Errorf("expected API key in query string, got %s", r.URL.String())
+		// Validate API key is in the x-goog-api-key header, not the query string
+		if r.Header.Get("x-goog-api-key") != "test-key" {
+			t.Errorf("expected x-goog-api-key header 'test-key', got %q", r.Header.Get("x-goog-api-key"))
+		}
+		if strings.Contains(r.URL.String(), "key=") {
+			t.Errorf("API key should not be in query string, got %s", r.URL.String())
 		}
 		if r.Header.Get("Content-Type") != "application/json" {
 			t.Errorf("unexpected Content-Type: %s", r.Header.Get("Content-Type"))

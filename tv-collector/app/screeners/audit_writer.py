@@ -25,7 +25,9 @@ log = structlog.get_logger(__name__)
 
 AUDIT_ENDPOINT = "/api/v1/stage1-eliminations"
 REQUEST_TIMEOUT: float = 5.0
-FALLBACK_DIR = "logs"
+# Audit-writer file fallback. Defaults to a non-cwd directory to avoid
+# silently writing `logs/` into the project checkout on local runs.
+FALLBACK_DIR = os.getenv("AUDIT_FALLBACK_DIR", "/var/tmp/tv-collector/audit-fallback")
 
 
 def _record_to_dict(rec: EliminationRecord) -> dict[str, Any]:
@@ -102,11 +104,11 @@ def write_audit(
 
 
 def _write_fallback(records: list[dict[str, Any]]) -> None:
-    """
-    Write elimination records to a local JSON file.
+    """Write elimination records to a local JSON file atomically.
 
-    File path: logs/stage1_audit_{run_date}.json
-    Appends to the array if the file already exists.
+    File path: {AUDIT_FALLBACK_DIR}/stage1_audit_{run_date}.json
+    Appends to the array if the file already exists, deduplicating by
+    (ticker, rule, date) to prevent unbounded growth on retry.
     """
     if not records:
         return
@@ -114,26 +116,30 @@ def _write_fallback(records: list[dict[str, Any]]) -> None:
     run_date = records[0].get("date", "unknown")
     fallback_dir = Path(FALLBACK_DIR)
     fallback_dir.mkdir(parents=True, exist_ok=True)
-
     fallback_path = fallback_dir / f"stage1_audit_{run_date}.json"
 
     try:
-        # Load existing records if file exists
         existing: list[dict[str, Any]] = []
         if fallback_path.exists():
             with open(fallback_path, "r") as f:
                 existing = json.load(f)
 
-        # Append new records
-        existing.extend(records)
+        seen = {(r["ticker"], r["rule"], r["date"]) for r in existing}
+        for r in records:
+            key = (r["ticker"], r["rule"], r["date"])
+            if key not in seen:
+                existing.append(r)
+                seen.add(key)
 
-        with open(fallback_path, "w") as f:
+        tmp = fallback_path.with_suffix(".json.tmp")
+        with open(tmp, "w") as f:
             json.dump(existing, f, indent=2, default=str)
+        os.replace(tmp, fallback_path)
 
         log.warning(
             "audit_writer.fallback_written",
             count=len(records),
-            path=str(fallback_path),
+            path=fallback_path.name,
             total_records=len(existing),
         )
 
@@ -141,5 +147,5 @@ def _write_fallback(records: list[dict[str, Any]]) -> None:
         log.error(
             "audit_writer.fallback_failed",
             error=str(exc),
-            path=str(fallback_path),
+            path=fallback_path.name,
         )

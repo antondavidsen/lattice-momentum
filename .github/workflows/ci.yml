@@ -103,7 +103,7 @@ jobs:
         run: |
           poetry lock
           if ! git diff --quiet -- poetry.lock; then
-            echo "::error::poetry.lock is out of sync. Run 'poetry lock --no-update' locally and commit."
+            echo "::error::poetry.lock is out of sync. Run 'poetry lock' locally and commit."
             git diff -- poetry.lock
             exit 1
           fi

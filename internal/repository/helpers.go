@@ -7,11 +7,15 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// isNoRows safely detects pgx.ErrNoRows. errors.Is can SIGSEGV when the
-// error's Unwrap chain contains a nil interface value (observed with pgx v5
-// under certain pool/row conditions). Direct comparison + string fallback
-// avoids the crash.
+// isNoRows reports whether err is pgx.ErrNoRows. Safe for nil err — returns false
+// without panicking. The string-Contains fallback below guards against wrapped
+// row-scan errors whose Unwrap chain does not point at the canonical sentinel
+// (older pgx versions sometimes wrapped ErrNoRows without Unwrap-as-sentinel
+// semantics; the fallback retains backward compatibility with those callers).
 func isNoRows(err error) bool {
+	if err == nil {
+		return false
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return true
 	}

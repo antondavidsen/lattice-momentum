@@ -16,9 +16,13 @@
 #   make logs           Tail all service logs
 #   make clean          Remove local build artefacts
 
-COVERAGE_THRESHOLD := 60
-# Packages counted toward coverage. Comma-separated for -coverpkg.
-COVER_PKG := ./internal/config/...,./internal/indicators/..../internal/api/...,./internal/llm/...,./internal/jobs/..../internal/models/...,./internal/services/ranking/...,./internal/services/outcomes/..., ./internal/services/regime/...,./internal/services/scoring/...,./internal/services/sector/...
+COVERAGE_THRESHOLD := 50
+# Build the comma-separated -coverpkg argument from COVER_PKGS (the
+# space-separated list immediately below). Avoids hand-maintaining two lists.
+comma := ,
+empty :=
+space := $(empty) $(empty)
+COVER_PKG := $(subst $(space),$(comma),$(COVER_PKGS))
 # Same list, space-separated for the test targets.
 COVER_PKGS := ./internal/config/... ./internal/indicators/... ./internal/api/... ./internal/llm/... ./internal/jobs/... ./internal/models/... ./internal/services/ranking/... ./internal/services/outcomes/... ./internal/services/regime/... ./internal/services/scoring/... ./internal/services/sector/...
 

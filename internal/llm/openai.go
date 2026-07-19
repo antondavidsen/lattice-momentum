@@ -107,7 +107,7 @@ func (c *openaiClient) Generate(ctx context.Context, req *Request) (Response, er
 			"llm_provider", "openai",
 		)
 		metrics.LLMRequestsTotal.WithLabelValues(c.Name(), model, "error", listType).Inc()
-		return Response{}, fmt.Errorf("openai: HTTP %d: %s", resp.StatusCode, string(respBody))
+		return Response{}, fmt.Errorf("openai: HTTP %d: %s", resp.StatusCode, redactErrorBody(respBody))
 	}
 
 	var apiResp responsesResponse
